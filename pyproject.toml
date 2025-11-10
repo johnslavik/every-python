@@ -1,0 +1,19 @@
+[project]
+name = "every-python"
+version = "0.1.0"
+description = "Build and run any commit of CPython"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.20.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[project.scripts]
+every-python = "every_python.main:app"
