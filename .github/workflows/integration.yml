@@ -69,7 +69,7 @@ jobs:
         run: uv run every-python run v3.13.0 -- --version
 
       - name: Test build with JIT
-        run: uv run every-python install main --jit --verbose
+        run: uv run every-python install v3.13.0 --jit --verbose
 
       - name: Verify JIT build works
-        run: uv run every-python run main --jit -- --version
+        run: uv run every-python run v3.13.0 --jit -- --version
