@@ -186,6 +186,10 @@ def _check_tool_version(tool_name: str, expected_version: str) -> bool:
 def python_binary_location(builds_dir: Path, build_info: "BuildInfo") -> Path:
     """Get the path to the Python binary for a given build."""
     if platform.system() == "Windows":
+        # Windows debug builds use python_d.exe, try that first
+        debug_binary = builds_dir / build_info.directory_name / "python_d.exe"
+        if debug_binary.exists():
+            return debug_binary
         return builds_dir / build_info.directory_name / "python.exe"
     else:
         return builds_dir / build_info.directory_name / "bin" / "python3"
