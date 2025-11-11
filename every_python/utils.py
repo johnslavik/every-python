@@ -197,7 +197,7 @@ def python_binary_location(builds_dir: Path, build_info: "BuildInfo") -> Path:
 
 @dataclass
 class BuildInfo:
-    """Information about a Python build."""
+    """Information needed to build and locate a specific Python build."""
 
     commit: str
     jit_enabled: bool
@@ -227,3 +227,49 @@ class BuildInfo:
     def from_directory(cls, path: Path) -> "BuildInfo":
         """Parse build info from directory path."""
         return cls.from_directory_name(path.name)
+
+
+@dataclass
+class BuildVersion:
+    """Complete build info with version parsing."""
+
+    build_info: BuildInfo
+    build_path: Path
+    version_string: str
+    major: int
+    minor: int
+    micro: int
+    suffix: str
+
+    @staticmethod
+    def parse_version(version_str: str) -> tuple[int, int, int, str]:
+        """Parse version string into sortable tuple."""
+        if version_str == "unknown":
+            return (0, 0, 0, "")
+
+        # Extract "Python X.Y.Z" or "Python X.Y.Za1+"
+        match = re.search(r"Python (\d+)\.(\d+)\.(\d+)([a-z0-9+]*)", version_str)
+        if match:
+            return (
+                int(match.group(1)),
+                int(match.group(2)),
+                int(match.group(3)),
+                match.group(4),
+            )
+        return (0, 0, 0, "")
+
+    @classmethod
+    def from_build(
+        cls, build: Path, version: str, build_info: BuildInfo
+    ) -> "BuildVersion":
+        """Create BuildVersion from build path and version string."""
+        parsed = cls.parse_version(version)
+        return cls(
+            build_info=build_info,
+            build_path=build,
+            version_string=version,
+            major=parsed[0],
+            minor=parsed[1],
+            micro=parsed[2],
+            suffix=parsed[3],
+        )
