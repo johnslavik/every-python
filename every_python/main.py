@@ -50,7 +50,7 @@ def ensure_repo() -> Path:
             output.error(f"Failed to clone CPython: {result.stderr}")
             raise typer.Exit(1)
 
-        output.success("✓ Repository cloned successfully")
+        output.success("Repository cloned successfully")
 
     return REPO_DIR
 
@@ -155,7 +155,7 @@ def build_python(commit: str, enable_jit: bool = False, verbose: bool = False) -
 
             # Add JIT flag if enabled
             if enable_jit:
-                configure_args.append("--experimental-jit")
+                configure_args.append("--enable-experimental-jit")
         if verbose:
             progress.stop()
             output.status(f"Running: {' '.join(configure_args)}")
@@ -231,7 +231,7 @@ def build_python(commit: str, enable_jit: bool = False, verbose: bool = False) -
                 output.error(f"Install failed: {install_result.stderr}")
                 raise typer.Exit(1)
 
-        progress.update(task, description=f"[green]✓ Built {commit[:7]}[/green]")
+        progress.update(task, description=f"[green]Built {commit[:7]}[/green]")
 
     return build_dir
 
@@ -396,7 +396,7 @@ def list_builds():
             commit_msg = ""
 
         if version != "unknown":
-            jit_text = "✓" if build_info.jit_enabled else ""
+            jit_text = "[JIT]" if build_info.jit_enabled else ""
             table.add_row(
                 version.replace("Python ", ""),
                 jit_text,
@@ -426,7 +426,7 @@ def clean(
     if all:
         if BUILDS_DIR.exists():
             shutil.rmtree(BUILDS_DIR)
-            output.success("✓ Removed all builds")
+            output.success("Removed all builds")
         else:
             output.warning("No builds to remove")
     elif ref:
@@ -444,7 +444,7 @@ def clean(
 
             if removed:
                 variants = " and ".join(removed)
-                output.success(f"✓ Removed {variants} build(s) for {commit[:7]}")
+                output.success(f"Removed {variants} build(s) for {commit[:7]}")
             else:
                 output.warning(f"No builds found for {commit[:7]}")
         except typer.Exit:
@@ -587,7 +587,7 @@ def bisect(
 
                 # Handle exit codes like every-ts
                 if test_result.returncode == 0:
-                    output.success("✓ Test passed (exit 0) - marking as good")
+                    output.success("Test passed (exit 0) - marking as good")
                     bisect_result = runner.run_git(
                         ["bisect", "good"], REPO_DIR, check=True
                     )
