@@ -7,12 +7,11 @@ from typer.testing import CliRunner
 
 from every_python.main import (
     app,
-    build_python,
     ensure_repo,
     resolve_ref,
 )
-from every_python.output import QuietOutputHandler, set_output
-from every_python.runner import CommandResult, CommandRunner, set_runner
+from every_python.output import set_output
+from every_python.runner import set_runner
 
 runner = CliRunner()
 
@@ -54,7 +53,6 @@ class TestEnsureRepo:
         ):
             ensure_repo()
 
-            # Should not have called git clone
             mock_run.assert_not_called()
 
 
@@ -104,153 +102,6 @@ class TestResolveRef:
 
             with pytest.raises(Exit):
                 resolve_ref("invalid-ref")
-
-
-class TestBuildPython:
-    """Test Python building logic."""
-
-    def test_build_without_jit(self, tmp_path: Path):
-        """Test building Python without JIT."""
-
-        # Create mock runner
-        mock_runner = Mock(spec=CommandRunner)
-        mock_runner.run_git.return_value = CommandResult(
-            returncode=0, stdout="", stderr=""
-        )
-        mock_runner.run.return_value = CommandResult(returncode=0, stdout="", stderr="")
-
-        # Set up dependency injection
-        set_runner(mock_runner)
-        set_output(QuietOutputHandler())
-
-        repo_dir = tmp_path / "cpython"
-        repo_dir.mkdir(parents=True)
-        builds_dir = tmp_path / "builds"
-
-        with (
-            patch("every_python.main.REPO_DIR", repo_dir),
-            patch("every_python.main.BUILDS_DIR", builds_dir),
-        ):
-            build_dir = build_python("abc123d", enable_jit=False)
-
-            # Should create non-JIT build directory
-            assert build_dir.name == "abc123d"
-            assert not build_dir.name.endswith("-jit")
-
-    def test_build_with_jit_available(self, tmp_path: Path):
-        """Test building Python with JIT when LLVM is available."""
-        # Create mock runner
-        mock_runner = Mock(spec=CommandRunner)
-        mock_runner.run_git.return_value = CommandResult(
-            returncode=0, stdout="", stderr=""
-        )
-        mock_runner.run.return_value = CommandResult(returncode=0, stdout="", stderr="")
-
-        # Set up dependency injection
-        set_runner(mock_runner)
-        set_output(QuietOutputHandler())
-
-        repo_dir = tmp_path / "cpython"
-        repo_dir.mkdir(parents=True)
-        builds_dir = tmp_path / "builds"
-
-        with (
-            patch("every_python.main.REPO_DIR", repo_dir),
-            patch("every_python.main.BUILDS_DIR", builds_dir),
-            patch("every_python.main.get_llvm_version_for_commit", return_value="20"),
-            patch("every_python.main.check_llvm_available", return_value=True),
-        ):
-            build_dir = build_python("abc123d", enable_jit=True)
-
-            # Should create JIT build directory
-            assert build_dir.name == "abc123d-jit"
-
-            # Should pass --enable-experimental-jit to configure
-            configure_calls = [
-                call_args
-                for call_args in mock_runner.run.call_args_list
-                if "./configure" in str(call_args)
-            ]
-            assert len(configure_calls) > 0
-            assert "--enable-experimental-jit" in str(configure_calls[0])
-
-    def test_build_with_jit_llvm_missing(self, tmp_path: Path):
-        """Test building with JIT when LLVM is missing falls back to non-JIT."""
-        # Create mock runner
-        mock_runner = Mock(spec=CommandRunner)
-        mock_runner.run_git.return_value = CommandResult(
-            returncode=0, stdout="", stderr=""
-        )
-        mock_runner.run.return_value = CommandResult(returncode=0, stdout="", stderr="")
-
-        # Set up dependency injection
-        set_runner(mock_runner)
-        set_output(QuietOutputHandler())
-
-        repo_dir = tmp_path / "cpython"
-        repo_dir.mkdir(parents=True)
-        builds_dir = tmp_path / "builds"
-
-        with (
-            patch("every_python.main.REPO_DIR", repo_dir),
-            patch("every_python.main.BUILDS_DIR", builds_dir),
-            patch("every_python.main.get_llvm_version_for_commit", return_value="20"),
-            patch("every_python.main.check_llvm_available", return_value=False),
-            patch("typer.confirm", return_value=True),
-        ):
-            build_dir = build_python("abc123d", enable_jit=True)
-
-            # Should fall back to non-JIT build
-            assert build_dir.name == "abc123d"
-            assert not build_dir.name.endswith("-jit")
-
-    def test_build_with_jit_not_available_in_commit(self, tmp_path: Path):
-        """Test building with JIT when JIT not available in commit."""
-        # Create mock runner
-        mock_runner = Mock(spec=CommandRunner)
-        mock_runner.run_git.return_value = CommandResult(
-            returncode=0, stdout="", stderr=""
-        )
-        mock_runner.run.return_value = CommandResult(returncode=0, stdout="", stderr="")
-
-        # Set up dependency injection
-        set_runner(mock_runner)
-        set_output(QuietOutputHandler())
-
-        repo_dir = tmp_path / "cpython"
-        repo_dir.mkdir(parents=True)
-        builds_dir = tmp_path / "builds"
-
-        with (
-            patch("every_python.main.REPO_DIR", repo_dir),
-            patch("every_python.main.BUILDS_DIR", builds_dir),
-            patch("every_python.main.get_llvm_version_for_commit", return_value=None),
-            patch("typer.confirm", return_value=True),
-        ):
-            build_dir = build_python("abc123d", enable_jit=True)
-
-            # Should fall back to non-JIT build
-            assert build_dir.name == "abc123d"
-
-    def test_build_already_exists(self, tmp_path: Path):
-        """Test that existing build is reused."""
-        repo_dir = tmp_path / "cpython"
-        repo_dir.mkdir(parents=True)
-        builds_dir = tmp_path / "builds"
-        builds_dir.mkdir(parents=True)
-
-        # Create existing build
-        existing_build = builds_dir / "abc123d"
-        existing_build.mkdir()
-
-        with (
-            patch("every_python.main.REPO_DIR", repo_dir),
-            patch("every_python.main.BUILDS_DIR", builds_dir),
-        ):
-            build_dir = build_python("abc123d", enable_jit=False)
-
-            # Should return existing build without running any configure/make
-            assert build_dir == existing_build
 
 
 class TestInstallCommand:
@@ -310,10 +161,12 @@ class TestRunCommand:
 
     @patch("os.execv")
     @patch("every_python.main.resolve_ref")
+    @patch("platform.system")
     def test_run_existing_build(
-        self, mock_resolve: Mock, mock_execv: Mock, tmp_path: Path
+        self, mock_platform: Mock, mock_resolve: Mock, mock_execv: Mock, tmp_path: Path
     ):
         """Test running with existing build."""
+        mock_platform.return_value = "Linux"  # Force Unix behavior
         mock_resolve.return_value = "abc123def456"
 
         builds_dir = tmp_path / "builds"

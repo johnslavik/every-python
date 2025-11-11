@@ -1,0 +1,75 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'every_python/**'
+      - '.github/workflows/integration.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'every_python/**'
+      - '.github/workflows/integration.yml'
+
+jobs:
+  integration:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            os: Linux
+          - runner: windows-2022
+            os: Windows
+          - runner: macos-14
+            os: macOS
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: "3.14"
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lsof
+          sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" ./llvm.sh 20
+          echo "$(llvm-config-20 --bindir)" >> $GITHUB_PATH
+
+      - name: Install LLVM (macOS)
+        if: runner.os == 'macOS'
+        run: brew install llvm@20
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+            enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Install package in editable mode
+        run: uv pip install -e .
+
+      - name: Test LLVM detection (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          uv run python -c "from every_python.utils import check_llvm_available; import sys; sys.exit(0 if check_llvm_available('20') else 1)"
+
+      - name: Test build without JIT
+        run: uv run every-python install v3.13.0 --verbose
+
+      - name: Verify non-JIT build works
+        run: uv run every-python run v3.13.0 -- --version
+
+      - name: Test build with JIT
+        run: uv run every-python install main --jit --verbose
+
+      - name: Verify JIT build works
+        run: uv run every-python run main --jit -- --version
