@@ -6,11 +6,10 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from typing_extensions import Annotated
 
-from every_python.output import get_output
+from every_python.output import create_progress, get_output, jit_indicator
 from every_python.runner import CommandResult, CommandRunner, get_runner
 from every_python.utils import (
     BuildInfo,
@@ -124,11 +123,7 @@ def build_python(commit: str, enable_jit: bool = False, verbose: bool = False) -
         )
         return build_dir
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with create_progress(console) as progress:
         # Checkout the commit
         task = progress.add_task(f"Checking out {commit[:7]}...", total=None)
         result = runner.run_git(["checkout", commit], REPO_DIR)
@@ -396,7 +391,7 @@ def list_builds():
             commit_msg = ""
 
         if version != "unknown":
-            jit_text = "[JIT]" if build_info.jit_enabled else ""
+            jit_text = jit_indicator() if build_info.jit_enabled else ""
             table.add_row(
                 version.replace("Python ", ""),
                 jit_text,
