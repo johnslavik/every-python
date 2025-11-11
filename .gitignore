@@ -28,3 +28,5 @@ build/
 # Pytest
 .cache/
 .pytest_cache/
+
+test_jit_api.py
