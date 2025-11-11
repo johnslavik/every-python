@@ -7,8 +7,8 @@ from typer.testing import CliRunner
 
 from every_python.main import (
     app,
-    ensure_repo,
-    resolve_ref,
+    _ensure_repo,
+    _resolve_ref,
 )
 from every_python.output import set_output
 from every_python.runner import set_runner
@@ -35,7 +35,7 @@ class TestEnsureRepo:
 
         with patch("every_python.main.REPO_DIR", repo_dir):
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
-            ensure_repo()
+            _ensure_repo()
 
             # Should have called git clone
             assert any(
@@ -51,7 +51,7 @@ class TestEnsureRepo:
             patch("every_python.main.REPO_DIR", repo_dir),
             patch("subprocess.run") as mock_run,
         ):
-            ensure_repo()
+            _ensure_repo()
 
             mock_run.assert_not_called()
 
@@ -69,7 +69,7 @@ class TestResolveRef:
             mock_run.return_value = Mock(
                 returncode=0, stdout="abc123def456\n", stderr=""
             )
-            commit = resolve_ref("main")
+            commit = _resolve_ref("main")
 
             assert commit == "abc123def456"
             assert "rev-parse" in str(mock_run.call_args)
@@ -84,7 +84,7 @@ class TestResolveRef:
             mock_run.return_value = Mock(
                 returncode=0, stdout="def456abc123\n", stderr=""
             )
-            commit = resolve_ref("v3.13.0")
+            commit = _resolve_ref("v3.13.0")
 
             assert commit == "def456abc123"
 
@@ -101,14 +101,14 @@ class TestResolveRef:
             from click.exceptions import Exit
 
             with pytest.raises(Exit):
-                resolve_ref("invalid-ref")
+                _resolve_ref("invalid-ref")
 
 
 class TestInstallCommand:
     """Test the install command."""
 
     @patch("every_python.main.build_python")
-    @patch("every_python.main.resolve_ref")
+    @patch("every_python.main._resolve_ref")
     def test_install_main(self, mock_resolve: Mock, mock_build: Mock, tmp_path: Path):
         """Test installing main branch."""
         mock_resolve.return_value = "abc123def456"
@@ -124,7 +124,7 @@ class TestInstallCommand:
         )
 
     @patch("every_python.main.build_python")
-    @patch("every_python.main.resolve_ref")
+    @patch("every_python.main._resolve_ref")
     def test_install_with_jit(
         self, mock_resolve: Mock, mock_build: Mock, tmp_path: Path
     ):
@@ -140,7 +140,7 @@ class TestInstallCommand:
         )
 
     @patch("every_python.main.build_python")
-    @patch("every_python.main.resolve_ref")
+    @patch("every_python.main._resolve_ref")
     def test_install_verbose(
         self, mock_resolve: Mock, mock_build: Mock, tmp_path: Path
     ):
@@ -160,7 +160,7 @@ class TestRunCommand:
     """Test the run command."""
 
     @patch("os.execv")
-    @patch("every_python.main.resolve_ref")
+    @patch("every_python.main._resolve_ref")
     @patch("platform.system")
     def test_run_existing_build(
         self, mock_platform: Mock, mock_resolve: Mock, mock_execv: Mock, tmp_path: Path
@@ -184,7 +184,7 @@ class TestRunCommand:
             assert "python3" in args[0]
 
     @patch("every_python.main.build_python")
-    @patch("every_python.main.resolve_ref")
+    @patch("every_python.main._resolve_ref")
     @patch("os.execv")
     def test_run_triggers_build(
         self, mock_execv: Mock, mock_resolve: Mock, mock_build: Mock, tmp_path: Path
@@ -254,7 +254,12 @@ class TestListBuildsCommand:
             if "--version" in cmd:
                 return Mock(returncode=0, stdout="Python 3.14.0a1+", stderr="")
             elif "git" in cmd and "log" in cmd:
-                return Mock(returncode=0, stdout="1234567890|Test commit", stderr="")
+                # Format: hash|timestamp|subject (matching --format=%H|%at|%s)
+                return Mock(
+                    returncode=0,
+                    stdout="abc123d|1234567890|Test commit\ndef456a|1234567891|Test commit JIT",
+                    stderr="",
+                )
             return Mock(returncode=0, stdout="", stderr="")
 
         mock_run.side_effect = mock_run_side_effect
@@ -278,14 +283,14 @@ class TestCleanCommand:
         builds_dir = tmp_path / "builds"
         builds_dir.mkdir(parents=True)
 
-        # Create builds - use the full commit hash that resolve_ref will return
+        # Create builds - use the full commit hash that _resolve_ref will return
         (builds_dir / "abc123def456").mkdir()
         (builds_dir / "abc123def456-jit").mkdir()
         (builds_dir / "def456a").mkdir()
 
         with (
             patch("every_python.main.BUILDS_DIR", builds_dir),
-            patch("every_python.main.resolve_ref", return_value="abc123def456"),
+            patch("every_python.main._resolve_ref", return_value="abc123def456"),
         ):
             result = runner.invoke(app, ["clean", "main"])
 
@@ -312,7 +317,7 @@ class TestBisectCommand:
     """Test the bisect command."""
 
     @patch("subprocess.run")
-    @patch("every_python.main.resolve_ref")
+    @patch("every_python.main._resolve_ref")
     @patch("every_python.main.build_python")
     def test_bisect_basic(
         self, mock_build: Mock, mock_resolve: Mock, mock_run: Mock, tmp_path: Path

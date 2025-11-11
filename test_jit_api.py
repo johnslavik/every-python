@@ -1,4 +1,5 @@
 import sys
+
 # Exit 0 (good) = feature doesn't exist yet
 # Exit 1 (bad) = feature exists
 if hasattr(sys, "_jit"):
