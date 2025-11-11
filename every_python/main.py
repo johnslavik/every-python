@@ -137,7 +137,8 @@ def build_python(commit: str, enable_jit: bool = False, verbose: bool = False) -
         progress.update(task, description="Configuring build...")
 
         if platform.system() == "Windows":
-            configure_args = ["PCbuild\\build.bat", "-c", "Debug"]
+            # Windows build uses PCbuild\build.bat via cmd
+            configure_args = ["cmd", "/c", "PCbuild\\build.bat", "-c", "Debug"]
             if enable_jit:
                 configure_args.append("--experimental-jit")
         else:
