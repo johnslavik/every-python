@@ -60,7 +60,7 @@ jobs:
       - name: Test LLVM detection (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
-          uv run python -c "from every_python.utils import check_llvm_available; import sys; sys.exit(0 if check_llvm_available('20') else 1)"
+          uv run python -c "from every_python.utils import check_llvm_available; import sys; sys.exit(0 if check_llvm_available('21') else 1)"
 
       - name: Test build without JIT
         run: uv run every-python install v3.13.0 --verbose
