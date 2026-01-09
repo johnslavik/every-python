@@ -69,13 +69,13 @@ jobs:
         run: uv run every-python run v3.13.0 -- --version
 
       - name: Test build with JIT
-        # Use commit that I know has JIT support with LLVM 20
-        run: uv run every-python install 42d014086098d3d70cacb4d8993f04cace120c12 --jit --verbose
+        # Use commit that I know has JIT support with LLVM 21
+        run: uv run every-python install aeb34035633b24afb27d3888fdd12abdf2bdc339 --jit --verbose
 
       - name: Verify JIT build works
-       # Use commit that I know has JIT support with LLVM 20
-        run: uv run every-python run 42d014086098d3d70cacb4d8993f04cace120c12 --jit -- --version
-
+       # Use commit that I know has JIT support with LLVM 21
+        run: uv run every-python run aeb34035633b24afb27d3888fdd12abdf2bdc339 --jit -- --version
+        
       - name: Verify consecutive builds work
         # Use two versions that can only be built if repo cleanup between works
         run: uv run every-python install v3.14.0 && uv run every-python install v3.13.0
