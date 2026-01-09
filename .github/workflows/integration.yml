@@ -39,13 +39,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y lsof
-          sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" ./llvm.sh 20
-          echo "$(llvm-config-20 --bindir)" >> $GITHUB_PATH
+          sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" ./llvm.sh 21
+          echo "$(llvm-config-21 --bindir)" >> $GITHUB_PATH
 
       - name: Install LLVM (macOS)
         if: runner.os == 'macOS'
-        run: brew install llvm@20
-
+        run: brew install llvm@21
+      
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -75,7 +75,7 @@ jobs:
       - name: Verify JIT build works
        # Use commit that I know has JIT support with LLVM 21
         run: uv run every-python run aeb34035633b24afb27d3888fdd12abdf2bdc339 --jit -- --version
-        
+
       - name: Verify consecutive builds work
         # Use two versions that can only be built if repo cleanup between works
         run: uv run every-python install v3.14.0 && uv run every-python install v3.13.0
