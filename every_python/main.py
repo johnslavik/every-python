@@ -121,7 +121,7 @@ def _validate_jit_availability(commit: str, repo_dir: Path) -> bool:
     return True
 
 
-def _get_configure_args(build_dir: Path, enable_jit: bool) -> list[str]:
+def _get_configure_args(build_dir: Path, enable_jit: bool, cache: bool) -> list[str]:
     """Get platform-specific configure arguments."""
     if platform.system() == "Windows":
         args = ["cmd", "/c", "PCbuild\\build.bat", "-c", "Debug"]
@@ -130,6 +130,8 @@ def _get_configure_args(build_dir: Path, enable_jit: bool) -> list[str]:
         return args
 
     args = ["./configure", "--prefix", str(build_dir), "--with-pydebug"]
+    if cache:
+        args.append("--config-cache")
     if enable_jit:
         args.append("--enable-experimental-jit")
     return args
@@ -169,10 +171,11 @@ def _run_configure(
     verbose: bool,
     progress: Progress,
     task: TaskID,
+    cache: bool,
 ) -> None:
     """Run the configure step."""
     output = get_output()
-    configure_args = _get_configure_args(build_dir, enable_jit)
+    configure_args = _get_configure_args(build_dir, enable_jit, cache)
 
     if verbose:
         progress.stop()
@@ -255,7 +258,12 @@ def _build_and_install_unix(
         raise typer.Exit(1)
 
 
-def build_python(commit: str, enable_jit: bool = False, verbose: bool = False) -> Path:
+def build_python(
+    commit: str,
+    enable_jit: bool = False,
+    configure_cache: bool = False,
+    verbose: bool = False,
+) -> Path:
     """Build Python at the given commit."""
     _ensure_repo()
     runner = get_runner()
@@ -298,7 +306,15 @@ def build_python(commit: str, enable_jit: bool = False, verbose: bool = False) -
         _run_clean_repo(runner, verbose, progress, task)
 
         # Configure
-        _run_configure(runner, build_dir, enable_jit, verbose, progress, task)
+        _run_configure(
+            runner=runner,
+            build_dir=build_dir,
+            enable_jit=enable_jit,
+            verbose=verbose,
+            progress=progress,
+            task=task,
+            cache=configure_cache,
+        )
 
         # Build and install (platform-specific)
         if platform.system() == "Windows":
